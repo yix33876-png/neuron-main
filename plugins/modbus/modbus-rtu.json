@@ -1,0 +1,475 @@
+{
+	"tag_regex": [
+		{
+			"type": 3,
+			"regex": "^[0-9]+![3-4][0-9]+(#B|#L|)$"
+		},
+		{
+			"type": 4,
+			"regex": "^[0-9]+![3-4][0-9]+(#B|#L|)$"
+		},
+		{
+			"type": 5,
+			"regex": "^[0-9]+![3-4][0-9]+(#BB|#BL|#LL|#LB|)$"
+		},
+		{
+			"type": 6,
+			"regex": "^[0-9]+![3-4][0-9]+(#BB|#BL|#LL|#LB|)$"
+		},
+		{
+			"type": 7,
+			"regex": "^[0-9]+![3-4][0-9]+(#B|#L|#BB|#BL|#LL|#LB|)$"
+		},
+		{
+			"type": 8,
+			"regex": "^[0-9]+![3-4][0-9]+(#B|#L|#BB|#BL|#LL|#LB|)$"
+		},
+		{
+			"type": 9,
+			"regex": "^[0-9]+![3-4][0-9]+(#BB|#BL|#LL|#LB|)$"
+		},
+		{
+			"type": 10,
+			"regex": "^[0-9]+![3-4][0-9]+(#B|#L|#BB|#BL|#LL|#LB|)$"
+		},
+		{
+			"type": 11,
+			"regex": "^[0-9]+!([0-1][0-9]+|[3-4][0-9]+\\.([0-9]|[0-1][0-5]))$"
+		},
+		{
+			"type": 13,
+			"regex": "^[0-9]+![3-4][0-9]+\\.[0-9]+(H|L|)$"
+		},
+		{
+			"type": 14,
+			"regex": "^[0-9]+![3-4][0-9]+\\.[0-9]+$"
+		}
+	],
+	"group_interval": 1000,
+	"link": {
+		"name": "Physical Link",
+		"name_zh": "物理链路",
+		"description": "Serial or Ethernet",
+		"description_zh": "串口连接或以太网连接",
+		"attribute": "required",
+		"type": "map",
+		"default": 0,
+		"valid": {
+			"map": [
+				{
+					"key": "Serial",
+					"value": 0
+				},
+				{
+					"key": "Ethernet",
+					"value": 1
+				}
+			]
+		}
+	},
+	"timeout": {
+		"name": "Connection Timeout (ms)",
+		"name_zh": "连接超时时间 (ms)",
+		"attribute": "required",
+		"type": "int",
+		"default": 3000,
+		"valid": {
+			"min": 1000,
+			"max": 30000
+		}
+	},
+	"device_degrade": {
+		"name": "Device Degradation",
+		"name_zh": "设备降级",
+    	"description": "Enable or disable device degradation mechanism",
+    	"description_zh": "启用或禁用设备降级机制",
+		"attribute": "required",
+		"type": "map",
+		"default": 0,
+		"valid": {
+			"map": [
+				{
+					"key": "False",
+					"value": 0
+				},
+				{
+					"key": "True",
+					"value": 1
+				}
+			]
+		}
+	},
+	"degrade_cycle": {
+		"name": "Failure Threshold for Degradation",
+		"name_zh": "降级失败阈值",
+		"description": "The number of consecutive failure cycles required to trigger device degradation",
+		"description_zh": "触发设备降级所需的连续失败周期数",
+		"attribute": "required",
+		"type": "int",
+		"default": 2,
+		"valid": {
+			"min": 1,
+			"max": 65535
+		},
+		"condition": {
+			"field": "device_degrade",
+			"value": 1
+		}
+	},
+	"degrade_time": {
+		"name": "Recovery Time After Degradation",
+		"name_zh": "降级恢复时间",
+		"description": "The time in seconds after which the device recovers from degradation",
+		"description_zh": "设备从降级中恢复所需的时间（单位：秒）",
+		"attribute": "required",
+		"type": "int",
+		"default": 600,
+		"valid": {
+			"min": 1,
+			"max": 65535
+		},
+		"condition": {
+			"field": "device_degrade",
+			"value": 1
+		}
+	},
+	"max_retries": {
+		"name": "Maximum Retry Times",
+		"name_zh": "最大重试次数",
+		"description": "The maximum number of retries after a failed attempt to send a read command",
+		"description_zh": "发送读指令失败后最大重试次数",
+		"attribute": "required",
+		"type": "int",
+		"default": 0,
+		"valid": {
+			"min": 0,
+			"max": 3
+		}
+	},
+	"retry_interval": {
+		"name": "Retry Interval (ms)",
+		"name_zh": "指令重新发送间隔 (ms)",
+		"attribute": "required",
+		"type": "int",
+		"default": 0,
+		"valid": {
+			"min": 0,
+			"max": 10000
+		}
+	},
+	"endianess": {
+		"name": "Endianess of 4-Byte Data",
+		"name_zh": "4 字节数据字节序",
+		"description": "Tag byte order, ABCD corresponds to 1234",
+		"description_zh": "点位字节序，ABCD 对应 1234",
+		"attribute": "required",
+		"type": "map",
+		"default": 1,
+		"valid": {
+			"map": [
+				{
+					"key": "ABCD",
+					"value": 1
+				},
+				{
+					"key": "BADC",
+					"value": 2
+				},
+				{
+					"key": "DCBA",
+					"value": 3
+				},
+				{
+					"key": "CDAB",
+					"value": 4
+				}
+			]
+		}
+	},
+	"endianess_64": {
+		"name": "Endianess of 8-Byte Data",
+		"name_zh": "8 字节数据字节序",
+		"description": "Tag byte order, applicable to int64, uint64 and double types",
+		"description_zh": "点位字节序，适用于 int64，uint64 和 double 类型",
+		"attribute": "required",
+		"type": "map",
+		"default": 1,
+		"valid": {
+			"map": [
+				{
+					"key": "12 34 56 78",
+					"value": 1
+				},
+				{
+					"key": "21 43 65 87",
+					"value": 2
+				},
+				{
+					"key": "87 65 43 21",
+					"value": 3
+				},
+				{
+					"key": "78 56 34 12",
+					"value": 4
+				}
+			]
+		}
+	},
+	"address_base": {
+		"name": "Start Address",
+		"name_zh": "开始地址",
+		"description": "Address starts from 1 or 0",
+		"description_zh": "地址从 1 开始或从 0 开始",
+		"attribute": "required",
+		"type": "map",
+		"default": 1,
+		"valid": {
+			"map": [
+				{
+					"key": "Protocol Addresses (Base 0)",
+					"value": 0
+				},
+				{
+					"key": "PLC Addresses (Base 1)",
+					"value": 1
+				}
+			]
+		}
+	},
+	"interval": {
+		"name": "Send Interval (ms)",
+		"name_zh": "指令发送间隔 (ms)",
+		"attribute": "required",
+		"type": "int",
+		"default": 20,
+		"valid": {
+			"min": 0,
+			"max": 3000
+		}
+	},
+	"device": {
+		"name": "Serial Device",
+		"name_zh": "串口设备",
+		"description": "Serial device path",
+		"description_zh": "串口设备路径",
+		"attribute": "required",
+		"type": "string",
+		"condition": {
+			"field": "link",
+			"value": 0
+		},
+		"valid": {
+			"length": 30
+		}
+	},
+	"stop": {
+		"name": "Stop Bits",
+		"name_zh": "停止位",
+		"attribute": "required",
+		"type": "map",
+		"default": 0,
+		"valid": {
+			"map": [
+				{
+					"key": "1",
+					"value": 0
+				},
+				{
+					"key": "2",
+					"value": 1
+				}
+			]
+		},
+		"condition": {
+			"field": "link",
+			"value": 0
+		}
+	},
+	"parity": {
+		"name": "Parity",
+		"name_zh": "校验位",
+		"attribute": "required",
+		"type": "map",
+		"default": 0,
+		"valid": {
+			"map": [
+				{
+					"key": "none",
+					"value": 0
+				},
+				{
+					"key": "odd",
+					"value": 1
+				},
+				{
+					"key": "even",
+					"value": 2
+				},
+				{
+					"key": "mark",
+					"value": 3
+				},
+				{
+					"key": "space",
+					"value": 4
+				}
+			]
+		},
+		"condition": {
+			"field": "link",
+			"value": 0
+		}
+	},
+	"baud": {
+		"name": "Baud Rate",
+		"name_zh": "波特率",
+		"attribute": "required",
+		"type": "map",
+		"default": 4,
+		"valid": {
+			"map": [
+				{
+					"key": "150",
+					"value": 12
+				},
+				{
+					"key": "200",
+					"value": 11
+				},
+				{
+					"key": "300",
+					"value": 10
+				},
+				{
+					"key": "600",
+					"value": 9
+				},
+				{
+					"key": "1200",
+					"value": 8
+				},
+				{
+					"key": "1800",
+					"value": 7
+				},
+				{
+					"key": "2400",
+					"value": 6
+				},
+				{
+					"key": "4800",
+					"value": 5
+				},
+				{
+					"key": "9600",
+					"value": 4
+				},
+				{
+					"key": "19200",
+					"value": 3
+				},
+				{
+					"key": "38400",
+					"value": 2
+				},
+				{
+					"key": "57600",
+					"value": 1
+				},
+				{
+					"key": "115200",
+					"value": 0
+				}
+			]
+		},
+		"condition": {
+			"field": "link",
+			"value": 0
+		}
+	},
+	"data": {
+		"name": "Data Bits",
+		"name_zh": "数据位",
+		"attribute": "required",
+		"type": "map",
+		"default": 3,
+		"valid": {
+			"map": [
+				{
+					"key": "5",
+					"value": 0
+				},
+				{
+					"key": "6",
+					"value": 1
+				},
+				{
+					"key": "7",
+					"value": 2
+				},
+				{
+					"key": "8",
+					"value": 3
+				}
+			]
+		},
+		"condition": {
+			"field": "link",
+			"value": 0
+		}
+	},
+	"host": {
+		"name": "IP Address",
+		"name_zh": "IP地址",
+		"description": "Local IP in server mode, remote device IP in client mode",
+		"description_zh": "服务端模式中填写本地 IP，客户端模式中填写目标设备 IP",
+		"attribute": "required",
+		"type": "string",
+		"condition": {
+			"field": "link",
+			"value": 1
+		}
+	},
+	"port": {
+		"name": "Port",
+		"name_zh": "端口号",
+		"description": "Local port in server mode, remote device port in client mode",
+		"description_zh": "服务端模式中填写本地端口号，客户端模式中填写远程设备端口号",
+		"attribute": "required",
+		"type": "int",
+		"default": 502,
+		"valid": {
+			"min": 1,
+			"max": 65535
+		},
+		"condition": {
+			"field": "link",
+			"value": 1
+		}
+	},
+	"connection_mode": {
+		"name": "Connection Mode",
+		"name_zh": "连接模式",
+		"description": "Neuron as the client, or as the server",
+		"description_zh": "Neuron 作为客户端或服务端",
+		"attribute": "required",
+		"type": "map",
+		"default": 0,
+		"valid": {
+			"map": [
+				{
+					"key": "Client",
+					"value": 0
+				},
+				{
+					"key": "Server",
+					"value": 1
+				}
+			]
+		},
+		"condition": {
+			"field": "link",
+			"value": 1
+		}
+	}
+}

@@ -1,0 +1,9 @@
+ignore:
+  - "src/otel/*.pb-c.c"
+  - "plugins/mqtt/azure_iot_plugin.c"
+coverage:
+  status:
+    project:
+      default:
+        target: auto    # the required coverage value
+        threshold: 0.1%  # the leniency in hitting the target

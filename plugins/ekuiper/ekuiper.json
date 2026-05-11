@@ -1,0 +1,27 @@
+{
+  "host": {
+    "name": "Local IP Address",
+    "name_zh": "本地IP地址",
+    "description": "IP address to listen for connections from eKuiper",
+    "description_zh": "绑定本地IP地址，等待eKuiper连接",
+    "attribute": "required",
+    "type": "string",
+    "default": "0.0.0.0",
+    "valid": {
+      "length": 255
+    }
+  },
+  "port": {
+    "name": "Local Port",
+    "name_zh": "本地端口",
+    "description": "TCP port number to listen for connections from eKuiper",
+    "description_zh": "绑定本地端口，等待eKuiper连接",
+    "attribute": "required",
+    "type": "int",
+    "default": 7081,
+    "valid": {
+      "min": 1024,
+      "max": 65535
+    }
+  }
+}

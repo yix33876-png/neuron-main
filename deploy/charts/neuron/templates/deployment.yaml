@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "neuron.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "neuron.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "neuron.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "neuron.selectorLabels" . | nindent 8 }}
+    spec:
+      volumes:
+        {{- range $mount := .Values.neuronMounts }}
+        - name: {{ $mount.name }}
+          {{- if $.Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-%s" $.Release.Name (tpl $mount.name $) }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
+
+        {{- if .Values.tls.enabled }}
+        - name: certs
+          secret:
+            secretName: {{ include "neuron.tlsSecretName" . }}
+            items:
+              - key: neuron.pem
+                path: neuron.pem
+              - key: neuron.key
+                path: neuron.key
+        {{- end}}
+      containers:
+        - name: neuron
+          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.neuronEnv.enabled }}
+          env:
+          - name: {{ .Values.neuronEnv.keys.disableAuth }}
+            value: "{{ .Values.neuronEnv.values.disableAuth }}"
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              port: {{ .Values.service.web | default 7000 }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          ports:
+          - name: web
+            containerPort: {{ .Values.service.ports.web.port | default 7000 }}
+            {{- if .Values.hostPorts.enabled }}
+            hostPort: {{ .Values.hostPorts.web | default 7000 }}
+            {{- end}}
+          - name: api
+            containerPort: {{ .Values.service.ports.api.port | default 7001 }}
+            {{- if .Values.hostPorts.enabled }}
+            hostPort: {{ .Values.hostPorts.api | default 7001 }}
+            {{- end}}
+          volumeMounts:
+          {{- range $mount := .Values.neuronMounts }}
+          - name: {{ $mount.name }}
+            mountPath: {{ $mount.mountPath }}
+          {{- end }}
+          {{- if .Values.tls.enabled }}
+          - name: certs
+            mountPath: "/opt/neuron/config/neuron.pem"
+            subPath: "neuron.pem"
+            readOnly: true
+          - name: certs
+            mountPath: "/opt/neuron/config/neuron.key"
+            subPath: "neuron.key"
+            readOnly: true
+          {{- end }}
+          resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+
+

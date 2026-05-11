@@ -1,0 +1,12 @@
+BEGIN TRANSACTION;
+
+CREATE TABLE IF NOT EXISTS modbus_tcp_simulator (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled INTEGER NOT NULL DEFAULT 0,
+  tags_json TEXT NOT NULL DEFAULT '[]',
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+alter TABLE nodes add column tags TEXT NULL;
+
+COMMIT;

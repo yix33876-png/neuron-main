@@ -1,0 +1,811 @@
+/**
+ * NEURON IIoT System for Industry 4.0
+ * Copyright (C) 2020-2022 EMQ Technologies Co., Ltd All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ **/
+#include <stdint.h>
+#include <stdlib.h>
+
+#include <nng/nng.h>
+#include <nng/supplemental/http/http.h>
+
+#include "plugin.h"
+
+#include "adapter_handle.h"
+#include "cert_handle.h"
+#include "cid_handle.h"
+#include "datalayers_handle.h"
+#include "datatag_handle.h"
+#include "global_config_handle.h"
+#include "group_config_handle.h"
+#include "log_handle.h"
+#include "metric_handle.h"
+#include "normal_handle.h"
+#include "otel_handle.h"
+#include "plugin_handle.h"
+#include "rw_handle.h"
+#include "scan_handle.h"
+#include "system_handle.h"
+#include "tpy_handle.h"
+#include "utils/http.h"
+#include "version_handle.h"
+
+#include "handle.h"
+#include "simulator_handle.h"
+
+struct neu_rest_handle_ctx {
+    void *plugin;
+};
+
+static struct neu_rest_handle_ctx *rest_ctx = NULL;
+
+static struct neu_http_handler cors_handler[] = {
+    {
+        .url = "/api/v2/ping",
+    },
+    {
+        .url = "/api/v2/login",
+    },
+    {
+        .url = "/api/v2/tags",
+    },
+    {
+        .url = "/api/v2/gtags",
+    },
+    {
+        .url = "/api/v2/group",
+    },
+    {
+        .url = "/api/v2/node",
+    },
+    {
+        .url = "/api/v2/plugin",
+    },
+    {
+        .url = "/api/v2/tty",
+    },
+    {
+        .url = "/api/v2/read",
+    },
+    {
+        .url = "/api/v2/read/paginate",
+    },
+    {
+        .url = "/api/v2/read/test",
+    },
+    {
+        .url = "/api/v2/write",
+    },
+    {
+        .url = "/api/v2/write/tags",
+    },
+    {
+        .url = "/api/v2/write/gtags",
+    },
+    {
+        .url = "/api/v2/subscribe",
+    },
+    {
+        .url = "/api/v2/subscribes",
+    },
+    {
+        .url = "/api/v2/schema",
+    },
+    {
+        .url = "/api/v2/node/setting",
+    },
+    {
+        .url = "/api/v2/node/ctl",
+    },
+    {
+        .url = "/api/v2/node/state",
+    },
+    {
+        .url = "/api/v2/version",
+    },
+    {
+        .url = "/api/v2/password",
+    },
+    {
+        .url = "/api/v2/log/level",
+    },
+    {
+        .url = "/api/v2/log/list",
+    },
+    {
+        .url = "/api/v2/log/file",
+    },
+    {
+        .url = "/api/v2/global/config",
+    },
+    {
+        .url = "/api/v2/global/drivers",
+    },
+    {
+        .url = "/api/v2/global/apps",
+    },
+    {
+        .url = "/api/v2/metrics",
+    },
+    {
+        .url = "/api/v2/scan/tags",
+    },
+    {
+        .url = "/api/v2/otel",
+    },
+    {
+        .url = "/api/v2/cid",
+    },
+    {
+        .url = "/api/v2/tpy",
+    },
+    {
+        .url = "/api/v2/system/ctl",
+    },
+    {
+        .url = "/api/v2/users",
+    },
+    {
+        .url = "/api/v2/datalayers/group",
+    },
+    {
+        .url = "/api/v2/datalayers/tags",
+    },
+    {
+        .url = "/api/v2/datalayers/tag",
+    },
+    {
+        .url = "/api/v2/export/db",
+    },
+    {
+        .url = "/api/v2/certs/self-signed",
+    },
+    {
+        .url = "/api/v2/certs/server",
+    },
+    {
+        .url = "/api/v2/certs/server/export",
+    },
+    {
+        .url = "/api/v2/certs/client",
+    },
+    {
+        .url = "/api/v2/certs/client/trust",
+    },
+    {
+        .url = "/api/v2/auth/basic/enable",
+    },
+    {
+        .url = "/api/v2/auth/basic/users",
+    },
+    {
+        .url = "/api/v2/auth/basic/security_policies",
+    },
+    {
+        .url = "/api/v2/simulator/status",
+    },
+    {
+        .url = "/api/v2/simulator/start",
+    },
+    {
+        .url = "/api/v2/simulator/stop",
+    },
+    {
+        .url = "/api/v2/simulator/config",
+    },
+    {
+        .url = "/api/v2/simulator/tags",
+    },
+    {
+        .url = "/api/v2/simulator/export",
+    },
+    {
+        .url = "/api/v2/tag/rename",
+    },
+};
+
+static struct neu_http_handler rest_handlers[] = {
+    {
+        .method     = NEU_HTTP_METHOD_GET,
+        .type       = NEU_HTTP_HANDLER_DIRECTORY,
+        .url        = "/web",
+        .value.path = "./dist",
+    },
+    {
+        .method     = NEU_HTTP_METHOD_UNDEFINE,
+        .type       = NEU_HTTP_HANDLER_REDIRECT,
+        .url        = "/",
+        .value.path = "/web",
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/cid",
+        .value.handler = handle_cid,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/tpy",
+        .value.handler = handle_tpy,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/ping",
+        .value.handler = handle_ping,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/login",
+        .value.handler = handle_login,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/password",
+        .value.handler = handle_password,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/tags",
+        .value.handler = handle_add_tags,
+
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/gtags",
+        .value.handler = handle_add_gtags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/tags/import",
+        .value.handler = handle_import_tags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/tags",
+        .value.handler = handle_update_tags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/tags",
+        .value.handler = handle_get_tags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_DELETE,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/tags",
+        .value.handler = handle_del_tags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/tag/rename",
+        .value.handler = handle_rename_tag,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/group",
+        .value.handler = handle_add_group_config,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/group",
+        .value.handler = handle_update_group,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_DELETE,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/group",
+        .value.handler = handle_del_group_config,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/group",
+        .value.handler = handle_get_group_config,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/node",
+        .value.handler = handle_add_adapter,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/node",
+        .value.handler = handle_update_adapter,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_DELETE,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/node",
+        .value.handler = handle_del_adapter,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/node",
+        .value.handler = handle_get_adapter,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/plugin",
+        .value.handler = handle_add_plugin,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/plugin",
+        .value.handler = handle_get_plugin,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_DELETE,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/plugin",
+        .value.handler = handle_del_plugin,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/plugin",
+        .value.handler = handle_update_plugin,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/read",
+        .value.handler = handle_read,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/read/paginate",
+        .value.handler = handle_read_paginate,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/read/test",
+        .value.handler = handle_test_read_tag,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/write",
+        .value.handler = handle_write,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/write/tags",
+        .value.handler = handle_write_tags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/write/gtags",
+        .value.handler = handle_write_gtags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/subscribe",
+        .value.handler = handle_grp_subscribe,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/subscribe",
+        .value.handler = handle_grp_update_subscribe,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_DELETE,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/subscribe",
+        .value.handler = handle_grp_unsubscribe,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/subscribe",
+        .value.handler = handle_grp_get_subscribe,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/subscribes",
+        .value.handler = handle_grp_get_subscribes,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/subscribes",
+        .value.handler = handle_grp_subscribes,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/schema",
+        .value.handler = handle_get_plugin_schema,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/node/setting",
+        .value.handler = handle_set_node_setting,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/node/setting",
+        .value.handler = handle_get_node_setting,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/node/ctl",
+        .value.handler = handle_node_ctl,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/node/state",
+        .value.handler = handle_get_node_state,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/log/level",
+        .value.handler = handle_log_level,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/log/global",
+        .value.handler = handle_global_log_level,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/log/global",
+        .value.handler = handle_get_global_log_level,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/log/list",
+        .value.handler = handle_log_list,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/log/file",
+        .value.handler = handle_log_file,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/version",
+        .value.handler = handle_get_version,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/global/config",
+        .value.handler = handle_get_global_config,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/global/config",
+        .value.handler = handle_put_global_config,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/global/drivers",
+        .value.handler = handle_put_drivers,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/global/drivers",
+        .value.handler = handle_get_drivers,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/global/apps",
+        .value.handler = handle_get_apps,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/global/apps",
+        .value.handler = handle_put_apps,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/metrics",
+        .value.handler = handle_get_metric,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/scan/tags",
+        .value.handler = handle_scan_tags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/status",
+        .value.handler = handle_status,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/otel",
+        .value.handler = handle_otel,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/otel",
+        .value.handler = handle_otel_get,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/system/ctl",
+        .value.handler = handle_system_ctl,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/users",
+        .value.handler = handle_get_user,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/users",
+        .value.handler = handle_add_user,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/users",
+        .value.handler = handle_update_user,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_DELETE,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/users",
+        .value.handler = handle_delete_user,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/datalayers/groups",
+        .value.handler = handle_datalayers_get_groups,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/datalayers/tags",
+        .value.handler = handle_datalayers_get_tags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/datalayers/tag",
+        .value.handler = handle_datalayers_get_tag,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/export/db",
+        .value.handler = handle_export_db,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/certs/self-signed",
+        .value.handler = handle_server_cert_self_sign,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/certs/server",
+        .value.handler = handle_server_cert_upload,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/certs/server",
+        .value.handler = handle_server_cert_get,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/certs/server/export",
+        .value.handler = handle_server_cert_export,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/certs/client",
+        .value.handler = handle_client_cert_upload,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_DELETE,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/certs/client",
+        .value.handler = handle_client_cert_delete,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/certs/client/trust",
+        .value.handler = handle_client_cert_trust,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/certs/client",
+        .value.handler = handle_client_cert_get,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/auth/basic/enable",
+        .value.handler = handle_auth_basic_enable,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/auth/basic/enable",
+        .value.handler = handle_auth_basic_status,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/auth/basic/users",
+        .value.handler = handle_add_basic_user,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/auth/basic/users",
+        .value.handler = handle_update_basic_user,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_DELETE,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/auth/basic/users",
+        .value.handler = handle_delete_basic_user,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/auth/basic/users",
+        .value.handler = handle_get_basic_users,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/auth/basic/security_policies",
+        .value.handler = handle_get_server_security_policy,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/auth/basic/security_policies",
+        .value.handler = handle_server_security_policy,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/simulator/status",
+        .value.handler = handle_simulator_status,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/simulator/tags",
+        .value.handler = handle_simulator_list_tags,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/simulator/start",
+        .value.handler = handle_simulator_start,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/simulator/stop",
+        .value.handler = handle_simulator_stop,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_POST,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/simulator/config",
+        .value.handler = handle_simulator_set_config,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_GET,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/simulator/export",
+        .value.handler = handle_simulator_export,
+    },
+    {
+        .method        = NEU_HTTP_METHOD_PUT,
+        .type          = NEU_HTTP_HANDLER_FUNCTION,
+        .url           = "/api/v2/node/tag",
+        .value.handler = handle_put_node_tag,
+    },
+};
+
+void neu_rest_handler(const struct neu_http_handler **handlers, uint32_t *size)
+{
+    *handlers = rest_handlers;
+    *size     = sizeof(rest_handlers) / sizeof(struct neu_http_handler);
+}
+
+void neu_rest_api_cors_handler(const struct neu_http_handler **handlers,
+                               uint32_t *                      size)
+{
+    *handlers = cors_handler;
+    *size     = sizeof(cors_handler) / sizeof(struct neu_http_handler);
+
+    for (uint32_t i = 0; i < *size; i++) {
+        cors_handler[i].method        = NEU_HTTP_METHOD_OPTIONS;
+        cors_handler[i].type          = NEU_HTTP_HANDLER_FUNCTION;
+        cors_handler[i].value.handler = neu_http_handle_cors;
+    }
+}
+
+neu_rest_handle_ctx_t *neu_rest_init_ctx(void *plugin)
+{
+    rest_ctx         = calloc(1, sizeof(neu_rest_handle_ctx_t));
+    rest_ctx->plugin = plugin;
+
+    return rest_ctx;
+}
+
+void neu_rest_free_ctx(neu_rest_handle_ctx_t *ctx)
+{
+    free(ctx);
+}
+
+void *neu_rest_get_plugin()
+{
+    return rest_ctx->plugin;
+}

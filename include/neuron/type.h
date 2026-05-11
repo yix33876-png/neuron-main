@@ -1,0 +1,1232 @@
+/**
+ * NEURON IIoT System for Industry 4.0
+ * Copyright (C) 2020-2022 EMQ Technologies Co., Ltd All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ **/
+
+#ifndef _NEU_TYPE_H_
+#define _NEU_TYPE_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <assert.h>
+#include <float.h>
+#include <math.h>
+#include <netinet/in.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+#include <jansson.h>
+
+typedef enum {
+    NEU_TYPE_INT8          = 1,
+    NEU_TYPE_UINT8         = 2,
+    NEU_TYPE_INT16         = 3,
+    NEU_TYPE_UINT16        = 4,
+    NEU_TYPE_INT32         = 5,
+    NEU_TYPE_UINT32        = 6,
+    NEU_TYPE_INT64         = 7,
+    NEU_TYPE_UINT64        = 8,
+    NEU_TYPE_FLOAT         = 9,
+    NEU_TYPE_DOUBLE        = 10,
+    NEU_TYPE_BIT           = 11,
+    NEU_TYPE_BOOL          = 12,
+    NEU_TYPE_STRING        = 13,
+    NEU_TYPE_BYTES         = 14,
+    NEU_TYPE_ERROR         = 15,
+    NEU_TYPE_WORD          = 16,
+    NEU_TYPE_DWORD         = 17,
+    NEU_TYPE_LWORD         = 18,
+    NEU_TYPE_PTR           = 19,
+    NEU_TYPE_TIME          = 20,
+    NEU_TYPE_DATA_AND_TIME = 21,
+    NEU_TYPE_ARRAY_CHAR    = 22,
+    NEU_TYPE_ARRAY_INT8    = 23,
+    NEU_TYPE_ARRAY_UINT8   = 24,
+    NEU_TYPE_ARRAY_INT16   = 25,
+    NEU_TYPE_ARRAY_UINT16  = 26,
+    NEU_TYPE_ARRAY_INT32   = 27,
+    NEU_TYPE_ARRAY_UINT32  = 28,
+    NEU_TYPE_ARRAY_INT64   = 29,
+    NEU_TYPE_ARRAY_UINT64  = 30,
+    NEU_TYPE_ARRAY_FLOAT   = 31,
+    NEU_TYPE_ARRAY_DOUBLE  = 32,
+    NEU_TYPE_ARRAY_BOOL    = 33,
+    NEU_TYPE_ARRAY_STRING  = 34,
+    NEU_TYPE_CUSTOM        = 40,
+} neu_type_e;
+
+inline static const char *neu_type_string(neu_type_e type)
+{
+    switch (type) {
+    case NEU_TYPE_INT8:
+        return "NEU_TYPE_INT8";
+    case NEU_TYPE_UINT8:
+        return "NEU_TYPE_UINT8";
+    case NEU_TYPE_INT16:
+        return "NEU_TYPE_INT16";
+    case NEU_TYPE_UINT16:
+        return "NEU_TYPE_UINT16";
+    case NEU_TYPE_INT32:
+        return "NEU_TYPE_INT32";
+    case NEU_TYPE_UINT32:
+        return "NEU_TYPE_UINT32";
+    case NEU_TYPE_INT64:
+        return "NEU_TYPE_INT64";
+    case NEU_TYPE_UINT64:
+        return "NEU_TYPE_UINT64";
+    case NEU_TYPE_FLOAT:
+        return "NEU_TYPE_FLOAT";
+    case NEU_TYPE_DOUBLE:
+        return "NEU_TYPE_DOUBLE";
+    case NEU_TYPE_BIT:
+        return "NEU_TYPE_BIT";
+    case NEU_TYPE_BOOL:
+        return "NEU_TYPE_BOOL";
+    case NEU_TYPE_STRING:
+        return "NEU_TYPE_STRING";
+    case NEU_TYPE_BYTES:
+        return "NEU_TYPE_BYTES";
+    case NEU_TYPE_ERROR:
+        return "NEU_TYPE_ERROR";
+    case NEU_TYPE_WORD:
+        return "NEU_TYPE_WORD";
+    case NEU_TYPE_DWORD:
+        return "NEU_TYPE_DWORD";
+    case NEU_TYPE_LWORD:
+        return "NEU_TYPE_LWORD";
+    case NEU_TYPE_PTR:
+        return "NEU_TYPE_PTR";
+    case NEU_TYPE_TIME:
+        return "NEU_TYPE_TIME";
+    case NEU_TYPE_DATA_AND_TIME:
+        return "NEU_TYPE_DATA_AND_TIME";
+    case NEU_TYPE_ARRAY_CHAR:
+        return "NEU_TYPE_ARRAY_CHAR";
+    case NEU_TYPE_ARRAY_INT8:
+        return "NEU_TYPE_ARRAY_INT8";
+    case NEU_TYPE_ARRAY_UINT8:
+        return "NEU_TYPE_ARRAY_UINT8";
+    case NEU_TYPE_ARRAY_INT16:
+        return "NEU_TYPE_ARRAY_INT16";
+    case NEU_TYPE_ARRAY_UINT16:
+        return "NEU_TYPE_ARRAY_UINT16";
+    case NEU_TYPE_ARRAY_INT32:
+        return "NEU_TYPE_ARRAY_INT32";
+    case NEU_TYPE_ARRAY_UINT32:
+        return "NEU_TYPE_ARRAY_UINT32";
+    case NEU_TYPE_ARRAY_INT64:
+        return "NEU_TYPE_ARRAY_INT64";
+    case NEU_TYPE_ARRAY_UINT64:
+        return "NEU_TYPE_ARRAY_UINT64";
+    case NEU_TYPE_ARRAY_FLOAT:
+        return "NEU_TYPE_ARRAY_FLOAT";
+    case NEU_TYPE_ARRAY_DOUBLE:
+        return "NEU_TYPE_ARRAY_FLOAT";
+    case NEU_TYPE_ARRAY_BOOL:
+        return "NEU_TYPE_ARRAY_BOOL";
+    case NEU_TYPE_ARRAY_STRING:
+        return "NEU_TYPE_ARRAY_STRING";
+    case NEU_TYPE_CUSTOM:
+        return "NEU_TYPE_CUSTOM";
+    }
+
+    return "";
+}
+
+typedef struct {
+    neu_type_e type; // string or bytes
+    uint16_t   length;
+    uint8_t *  ptr;
+} neu_value_ptr_t;
+
+#define NEU_VALUE_SIZE 256
+#define NEU_ARRAY_SIZE 128
+
+typedef struct {
+    uint8_t bytes[NEU_VALUE_SIZE];
+    uint8_t length;
+} neu_value_bytes_t;
+
+typedef struct {
+    int8_t * i8s;
+    uint32_t length;
+} neu_value_array_int8_t;
+
+typedef struct {
+    uint8_t *u8s;
+    uint32_t length;
+} neu_value_array_uint8_t;
+
+typedef struct {
+    int16_t *i16s;
+    uint32_t length;
+} neu_value_array_int16_t;
+
+typedef struct {
+    uint16_t *u16s;
+    uint32_t  length;
+} neu_value_array_uint16_t;
+
+typedef struct {
+    int32_t *i32s;
+    uint32_t length;
+} neu_value_array_int32_t;
+
+typedef struct {
+    uint32_t *u32s;
+    uint32_t  length;
+} neu_value_array_uint32_t;
+
+typedef struct {
+    int64_t *i64s;
+    uint32_t length;
+} neu_value_array_int64_t;
+
+typedef struct {
+    uint64_t *u64s;
+    uint32_t  length;
+} neu_value_array_uint64_t;
+
+typedef struct {
+    float *  f32s;
+    uint32_t length;
+} neu_value_array_float_t;
+
+typedef struct {
+    double * f64s;
+    uint32_t length;
+} neu_value_array_double_t;
+
+typedef struct {
+    bool *   bools;
+    uint32_t length;
+} neu_value_array_bool_t;
+
+typedef struct {
+    char **  strs;
+    uint32_t length;
+} neu_value_array_string_t;
+
+typedef union {
+    bool                     boolean;
+    int8_t                   i8;
+    uint8_t                  u8;
+    int16_t                  i16;
+    uint16_t                 u16;
+    int32_t                  i32;
+    uint32_t                 u32;
+    int64_t                  i64;
+    uint64_t                 u64;
+    float                    f32;
+    double                   d64;
+    char                     str[NEU_VALUE_SIZE];
+    neu_value_bytes_t        bytes;
+    neu_value_ptr_t          ptr;
+    json_t *                 json;
+    neu_value_array_int8_t   i8s;
+    neu_value_array_uint8_t  u8s;
+    neu_value_array_int16_t  i16s;
+    neu_value_array_uint16_t u16s;
+    neu_value_array_int32_t  i32s;
+    neu_value_array_uint32_t u32s;
+    neu_value_array_int64_t  i64s;
+    neu_value_array_uint64_t u64s;
+    neu_value_array_float_t  f32s;
+    neu_value_array_double_t f64s;
+    neu_value_array_bool_t   bools;
+    neu_value_array_string_t strs;
+} neu_value_u;
+
+static inline char *neu_value_str(neu_type_e type, neu_value_u value)
+{
+    static __thread char str[128] = { 0 };
+
+    memset(str, 0, sizeof(str));
+
+    switch (type) {
+    case NEU_TYPE_INT8:
+        snprintf(str, sizeof(str), "type: %s, value: %i", neu_type_string(type),
+                 value.i8);
+        break;
+    case NEU_TYPE_UINT8:
+        snprintf(str, sizeof(str), "type: %s, value: %u", neu_type_string(type),
+                 value.u8);
+        break;
+    case NEU_TYPE_INT16:
+        snprintf(str, sizeof(str), "type: %s, value: %i", neu_type_string(type),
+                 value.i16);
+        break;
+    case NEU_TYPE_WORD:
+    case NEU_TYPE_UINT16:
+        snprintf(str, sizeof(str), "type: %s, value: %u", neu_type_string(type),
+                 value.u16);
+        break;
+    case NEU_TYPE_INT32:
+        snprintf(str, sizeof(str), "type: %s, value: %i", neu_type_string(type),
+                 value.i32);
+        break;
+    case NEU_TYPE_DWORD:
+    case NEU_TYPE_UINT32:
+        snprintf(str, sizeof(str), "type: %s, value: %u", neu_type_string(type),
+                 value.u32);
+        break;
+    case NEU_TYPE_INT64: {
+        long long int i = value.i64;
+        snprintf(str, sizeof(str), "type: %s, value: %lld",
+                 neu_type_string(type), i);
+        break;
+    }
+    case NEU_TYPE_LWORD:
+    case NEU_TYPE_UINT64: {
+        long long unsigned int i = value.u64;
+        snprintf(str, sizeof(str), "type: %s, value: %llu",
+                 neu_type_string(type), i);
+        break;
+    }
+    case NEU_TYPE_FLOAT:
+        snprintf(str, sizeof(str), "type: %s, value: %f", neu_type_string(type),
+                 value.f32);
+        break;
+    case NEU_TYPE_DOUBLE:
+        snprintf(str, sizeof(str), "type: %s, value: %f", neu_type_string(type),
+                 value.d64);
+        break;
+    case NEU_TYPE_BIT:
+        snprintf(str, sizeof(str), "type: %s, value: %u", neu_type_string(type),
+                 value.u8);
+        break;
+    case NEU_TYPE_BOOL:
+        snprintf(str, sizeof(str), "type: %s, value: %u", neu_type_string(type),
+                 value.boolean);
+        break;
+    case NEU_TYPE_STRING:
+    case NEU_TYPE_TIME:
+    case NEU_TYPE_DATA_AND_TIME: {
+        snprintf(str, sizeof(str), "type: %s, value: %c%c%c",
+                 neu_type_string(type), value.str[0], value.str[1],
+                 value.str[2]);
+        break;
+    }
+    case NEU_TYPE_CUSTOM: {
+        char *result = json_dumps(value.json, JSON_REAL_PRECISION(16));
+        snprintf(str, sizeof(str), "type: %s, value: %s", neu_type_string(type),
+                 result);
+        free(result);
+        break;
+    }
+    default:
+        break;
+    }
+
+    return str;
+}
+
+typedef struct {
+    neu_type_e  type;
+    neu_value_u value;
+    uint8_t     precision;
+} neu_dvalue_t;
+
+static inline bool neu_dvalue_is_array(const neu_dvalue_t *dvalue)
+{
+    return dvalue->type >= NEU_TYPE_ARRAY_CHAR;
+}
+
+static inline bool neu_equal_dvalue(const neu_dvalue_t *one, neu_dvalue_t *two)
+{
+    if (one == NULL || two == NULL) {
+        return false;
+    }
+
+    // Compare type and precision
+    if (one->type != two->type || one->precision != two->precision) {
+        return false;
+    }
+
+    // Compare values based on type
+    switch (one->type) {
+    case NEU_TYPE_BOOL:
+        return one->value.boolean == two->value.boolean;
+    case NEU_TYPE_INT8:
+        return one->value.i8 == two->value.i8;
+    case NEU_TYPE_UINT8:
+    case NEU_TYPE_BIT:
+        return one->value.u8 == two->value.u8;
+    case NEU_TYPE_INT16:
+        return one->value.i16 == two->value.i16;
+    case NEU_TYPE_UINT16:
+    case NEU_TYPE_WORD:
+        return one->value.u16 == two->value.u16;
+    case NEU_TYPE_ERROR:
+    case NEU_TYPE_INT32:
+        return one->value.i32 == two->value.i32;
+    case NEU_TYPE_UINT32:
+    case NEU_TYPE_DWORD:
+        return one->value.u32 == two->value.u32;
+    case NEU_TYPE_INT64:
+        return one->value.i64 == two->value.i64;
+    case NEU_TYPE_UINT64:
+    case NEU_TYPE_LWORD:
+        return one->value.u64 == two->value.u64;
+    case NEU_TYPE_FLOAT:
+        // Use epsilon comparison for floating point
+        return fabsf(one->value.f32 - two->value.f32) < FLT_EPSILON;
+    case NEU_TYPE_DOUBLE:
+        // Use epsilon comparison for double
+        return fabs(one->value.d64 - two->value.d64) < DBL_EPSILON;
+    case NEU_TYPE_STRING:
+    case NEU_TYPE_TIME:
+    case NEU_TYPE_DATA_AND_TIME:
+    case NEU_TYPE_ARRAY_CHAR:
+        return strcmp(one->value.str, two->value.str) == 0;
+    case NEU_TYPE_BYTES:
+        return one->value.bytes.length == two->value.bytes.length &&
+            memcmp(one->value.bytes.bytes, two->value.bytes.bytes,
+                   one->value.bytes.length) == 0;
+    case NEU_TYPE_PTR:
+        return one->value.ptr.type == two->value.ptr.type &&
+            one->value.ptr.length == two->value.ptr.length &&
+            memcmp(one->value.ptr.ptr, two->value.ptr.ptr,
+                   one->value.ptr.length) == 0;
+    case NEU_TYPE_ARRAY_INT8:
+        if (one->value.i8s.length != two->value.i8s.length) {
+            return false;
+        }
+        return memcmp(one->value.i8s.i8s, two->value.i8s.i8s,
+                      sizeof(int8_t) * one->value.i8s.length) == 0;
+    case NEU_TYPE_ARRAY_UINT8:
+        if (one->value.u8s.length != two->value.u8s.length) {
+            return false;
+        }
+        return memcmp(one->value.u8s.u8s, two->value.u8s.u8s,
+                      sizeof(uint8_t) * one->value.u8s.length) == 0;
+    case NEU_TYPE_ARRAY_INT16:
+        if (one->value.i16s.length != two->value.i16s.length) {
+            return false;
+        }
+        return memcmp(one->value.i16s.i16s, two->value.i16s.i16s,
+                      sizeof(int16_t) * one->value.i16s.length) == 0;
+    case NEU_TYPE_ARRAY_UINT16:
+        if (one->value.u16s.length != two->value.u16s.length) {
+            return false;
+        }
+        return memcmp(one->value.u16s.u16s, two->value.u16s.u16s,
+                      sizeof(uint16_t) * one->value.u16s.length) == 0;
+    case NEU_TYPE_ARRAY_INT32:
+        if (one->value.i32s.length != two->value.i32s.length) {
+            return false;
+        }
+        return memcmp(one->value.i32s.i32s, two->value.i32s.i32s,
+                      sizeof(int32_t) * one->value.i32s.length) == 0;
+    case NEU_TYPE_ARRAY_UINT32:
+        if (one->value.u32s.length != two->value.u32s.length) {
+            return false;
+        }
+        return memcmp(one->value.u32s.u32s, two->value.u32s.u32s,
+                      sizeof(uint32_t) * one->value.u32s.length) == 0;
+    case NEU_TYPE_ARRAY_INT64:
+        if (one->value.i64s.length != two->value.i64s.length) {
+            return false;
+        }
+        return memcmp(one->value.i64s.i64s, two->value.i64s.i64s,
+                      sizeof(int64_t) * one->value.i64s.length) == 0;
+    case NEU_TYPE_ARRAY_UINT64:
+        if (one->value.u64s.length != two->value.u64s.length) {
+            return false;
+        }
+        return memcmp(one->value.u64s.u64s, two->value.u64s.u64s,
+                      sizeof(uint64_t) * one->value.u64s.length) == 0;
+    case NEU_TYPE_ARRAY_FLOAT:
+        if (one->value.f32s.length != two->value.f32s.length) {
+            return false;
+        }
+        for (uint32_t i = 0; i < one->value.f32s.length; i++) {
+            if (fabsf(one->value.f32s.f32s[i] - two->value.f32s.f32s[i]) >=
+                FLT_EPSILON) {
+                return false;
+            }
+        }
+        return true;
+    case NEU_TYPE_ARRAY_DOUBLE:
+        if (one->value.f64s.length != two->value.f64s.length) {
+            return false;
+        }
+        for (uint32_t i = 0; i < one->value.f64s.length; i++) {
+            if (fabs(one->value.f64s.f64s[i] - two->value.f64s.f64s[i]) >=
+                DBL_EPSILON) {
+                return false;
+            }
+        }
+        return true;
+    case NEU_TYPE_ARRAY_BOOL:
+        if (one->value.bools.length != two->value.bools.length) {
+            return false;
+        }
+        return memcmp(one->value.bools.bools, two->value.bools.bools,
+                      sizeof(bool) * one->value.bools.length) == 0;
+    case NEU_TYPE_ARRAY_STRING:
+        if (one->value.strs.length != two->value.strs.length) {
+            return false;
+        }
+        for (uint32_t i = 0; i < one->value.strs.length; i++) {
+            if (strcmp(one->value.strs.strs[i], two->value.strs.strs[i]) != 0) {
+                return false;
+            }
+        }
+        return true;
+    case NEU_TYPE_CUSTOM:
+        return json_equal(one->value.json, two->value.json);
+    default:
+        return false;
+    }
+}
+
+static inline void neu_copy_dvalue(const neu_dvalue_t *src, neu_dvalue_t *dst)
+{
+    if (src == NULL || dst == NULL) {
+        return;
+    }
+
+    dst->type      = src->type;
+    dst->precision = src->precision;
+    dst->value     = src->value;
+
+    // value need deep copy
+    switch (src->type) {
+    case NEU_TYPE_ARRAY_INT8:
+        dst->value.i8s.i8s =
+            (int8_t *) malloc(sizeof(int8_t) * src->value.i8s.length);
+        memcpy(dst->value.i8s.i8s, src->value.i8s.i8s,
+               sizeof(int8_t) * src->value.i8s.length);
+        dst->value.i8s.length = src->value.i8s.length;
+        break;
+    case NEU_TYPE_ARRAY_UINT8:
+        dst->value.u8s.u8s =
+            (uint8_t *) malloc(sizeof(uint8_t) * src->value.u8s.length);
+        memcpy(dst->value.u8s.u8s, src->value.u8s.u8s,
+               sizeof(uint8_t) * src->value.u8s.length);
+        dst->value.u8s.length = src->value.u8s.length;
+        break;
+    case NEU_TYPE_ARRAY_INT16:
+        dst->value.i16s.i16s =
+            (int16_t *) malloc(sizeof(int16_t) * src->value.i16s.length);
+        memcpy(dst->value.i16s.i16s, src->value.i16s.i16s,
+               sizeof(int16_t) * src->value.i16s.length);
+        dst->value.i16s.length = src->value.i16s.length;
+        break;
+    case NEU_TYPE_ARRAY_UINT16:
+        dst->value.u16s.u16s =
+            (uint16_t *) malloc(sizeof(uint16_t) * src->value.u16s.length);
+        memcpy(dst->value.u16s.u16s, src->value.u16s.u16s,
+               sizeof(uint16_t) * src->value.u16s.length);
+        dst->value.u16s.length = src->value.u16s.length;
+        break;
+    case NEU_TYPE_ARRAY_INT32:
+        dst->value.i32s.i32s =
+            (int32_t *) malloc(sizeof(int32_t) * src->value.i32s.length);
+        memcpy(dst->value.i32s.i32s, src->value.i32s.i32s,
+               sizeof(int32_t) * src->value.i32s.length);
+        dst->value.i32s.length = src->value.i32s.length;
+        break;
+    case NEU_TYPE_ARRAY_UINT32:
+        dst->value.u32s.u32s =
+            (uint32_t *) malloc(sizeof(uint32_t) * src->value.u32s.length);
+        memcpy(dst->value.u32s.u32s, src->value.u32s.u32s,
+               sizeof(uint32_t) * src->value.u32s.length);
+        dst->value.u32s.length = src->value.u32s.length;
+        break;
+    case NEU_TYPE_ARRAY_INT64:
+        dst->value.i64s.i64s =
+            (int64_t *) malloc(sizeof(int64_t) * src->value.i64s.length);
+        memcpy(dst->value.i64s.i64s, src->value.i64s.i64s,
+               sizeof(int64_t) * src->value.i64s.length);
+        dst->value.i64s.length = src->value.i64s.length;
+        break;
+    case NEU_TYPE_ARRAY_UINT64:
+        dst->value.u64s.u64s =
+            (uint64_t *) malloc(sizeof(uint64_t) * src->value.u64s.length);
+        memcpy(dst->value.u64s.u64s, src->value.u64s.u64s,
+               sizeof(uint64_t) * src->value.u64s.length);
+        dst->value.u64s.length = src->value.u64s.length;
+        break;
+    case NEU_TYPE_ARRAY_FLOAT:
+        dst->value.f32s.f32s =
+            (float *) malloc(sizeof(float) * src->value.f32s.length);
+        memcpy(dst->value.f32s.f32s, src->value.f32s.f32s,
+               sizeof(float) * src->value.f32s.length);
+        dst->value.f32s.length = src->value.f32s.length;
+        break;
+    case NEU_TYPE_ARRAY_DOUBLE:
+        dst->value.f64s.f64s =
+            (double *) malloc(sizeof(double) * src->value.f64s.length);
+        memcpy(dst->value.f64s.f64s, src->value.f64s.f64s,
+               sizeof(double) * src->value.f64s.length);
+        dst->value.f64s.length = src->value.f64s.length;
+        break;
+    case NEU_TYPE_ARRAY_BOOL:
+        dst->value.bools.bools =
+            (bool *) malloc(sizeof(bool) * src->value.bools.length);
+        memcpy(dst->value.bools.bools, src->value.bools.bools,
+               sizeof(bool) * src->value.bools.length);
+        dst->value.bools.length = src->value.bools.length;
+        break;
+    case NEU_TYPE_ARRAY_STRING:
+        dst->value.strs.strs =
+            (char **) malloc(sizeof(char *) * src->value.strs.length);
+        for (uint32_t i = 0; i < src->value.strs.length; i++) {
+            dst->value.strs.strs[i] = strdup(src->value.strs.strs[i]);
+        }
+        dst->value.strs.length = src->value.strs.length;
+        break;
+    case NEU_TYPE_CUSTOM:
+        dst->value.json = json_deep_copy(src->value.json);
+        break;
+    default:
+        break;
+    }
+}
+
+static inline void neu_free_dvalue(neu_dvalue_t *dvalue)
+{
+    if (dvalue->type > NEU_TYPE_ARRAY_CHAR &&
+        dvalue->type < NEU_TYPE_ARRAY_STRING) {
+        if (dvalue->value.bools.bools != NULL) {
+            free(dvalue->value.bools.bools);
+            dvalue->value.bools.bools = NULL;
+        }
+    } else if (dvalue->type == NEU_TYPE_ARRAY_STRING) {
+        if (dvalue->value.strs.strs != NULL) {
+            for (uint32_t i = 0; i < dvalue->value.strs.length; i++) {
+                free(dvalue->value.strs.strs[i]);
+            }
+            free(dvalue->value.strs.strs);
+            dvalue->value.strs.strs = NULL;
+        }
+    } else if (dvalue->type == NEU_TYPE_CUSTOM) {
+        if (dvalue->value.json != NULL) {
+            json_decref(dvalue->value.json);
+        }
+    }
+}
+
+typedef union neu_value8 {
+    uint8_t value;
+    struct {
+        uint8_t b0 : 1;
+        uint8_t b1 : 1;
+        uint8_t b2 : 1;
+        uint8_t b3 : 1;
+        uint8_t b4 : 1;
+        uint8_t b5 : 1;
+        uint8_t b6 : 1;
+        uint8_t b7 : 1;
+    } __attribute__((packed)) vb;
+} neu_value8_u;
+
+typedef union neu_value16 {
+    uint16_t value;
+    struct {
+        uint8_t b0 : 1;
+        uint8_t b1 : 1;
+        uint8_t b2 : 1;
+        uint8_t b3 : 1;
+        uint8_t b4 : 1;
+        uint8_t b5 : 1;
+        uint8_t b6 : 1;
+        uint8_t b7 : 1;
+        uint8_t b8 : 1;
+        uint8_t b9 : 1;
+        uint8_t b10 : 1;
+        uint8_t b11 : 1;
+        uint8_t b12 : 1;
+        uint8_t b13 : 1;
+        uint8_t b14 : 1;
+        uint8_t b15 : 1;
+    } __attribute__((packed)) vb;
+} neu_value16_u;
+
+typedef union neu_value24 {
+    uint8_t value[3];
+} neu_value24_u;
+
+typedef union neu_value32 {
+    uint32_t vint;
+    float    vfloat;
+} neu_value32_u;
+
+typedef union neu_value64 {
+    uint64_t vint;
+    double   vdouble;
+} neu_value64_u;
+
+static inline void neu_value24_set(union neu_value24 *v24, uint32_t v)
+{
+    assert((v & 0xff000000) == 0);
+
+    v24->value[0] = v & 0xff;
+    v24->value[1] = (v >> 8) & 0xff;
+    v24->value[2] = (v >> 16) & 0xff;
+}
+
+static inline uint32_t neu_value24_get(union neu_value24 v24)
+{
+    uint32_t ret = 0;
+
+    ret |= v24.value[0];
+    ret |= v24.value[1] << 8;
+    ret |= v24.value[2] << 16;
+
+    return ret;
+}
+
+static inline uint8_t neu_value8_get_bit(neu_value8_u value, uint8_t index)
+{
+    uint8_t ret = 0;
+
+    switch (index) {
+    case 0:
+        ret = value.vb.b0;
+        break;
+    case 1:
+        ret = value.vb.b1;
+        break;
+    case 2:
+        ret = value.vb.b2;
+        break;
+    case 3:
+        ret = value.vb.b3;
+        break;
+    case 4:
+        ret = value.vb.b4;
+        break;
+    case 5:
+        ret = value.vb.b5;
+        break;
+    case 6:
+        ret = value.vb.b6;
+        break;
+    case 7:
+        ret = value.vb.b7;
+        break;
+    default:
+        assert(1 == 0);
+        break;
+    }
+
+    return ret;
+}
+
+static inline void neu_value8_set_bit(neu_value8_u *value, uint8_t index,
+                                      uint8_t v)
+{
+    switch (index) {
+    case 0:
+        value->vb.b0 = v;
+        break;
+    case 1:
+        value->vb.b1 = v;
+        break;
+    case 2:
+        value->vb.b2 = v;
+        break;
+    case 3:
+        value->vb.b3 = v;
+        break;
+    case 4:
+        value->vb.b4 = v;
+        break;
+    case 5:
+        value->vb.b5 = v;
+        break;
+    case 6:
+        value->vb.b6 = v;
+        break;
+    case 7:
+        value->vb.b7 = v;
+        break;
+    default:
+        assert(1 == 0);
+        break;
+    }
+}
+
+static inline uint8_t neu_value16_get_bit(neu_value16_u value, uint8_t index)
+{
+    uint8_t ret = 0;
+
+    switch (index) {
+    case 0:
+        ret = value.vb.b0;
+        break;
+    case 1:
+        ret = value.vb.b1;
+        break;
+    case 2:
+        ret = value.vb.b2;
+        break;
+    case 3:
+        ret = value.vb.b3;
+        break;
+    case 4:
+        ret = value.vb.b4;
+        break;
+    case 5:
+        ret = value.vb.b5;
+        break;
+    case 6:
+        ret = value.vb.b6;
+        break;
+    case 7:
+        ret = value.vb.b7;
+        break;
+    case 8:
+        ret = value.vb.b8;
+        break;
+    case 9:
+        ret = value.vb.b9;
+        break;
+    case 10:
+        ret = value.vb.b10;
+        break;
+    case 11:
+        ret = value.vb.b11;
+        break;
+    case 12:
+        ret = value.vb.b12;
+        break;
+    case 13:
+        ret = value.vb.b13;
+        break;
+    case 14:
+        ret = value.vb.b14;
+        break;
+    case 15:
+        ret = value.vb.b15;
+        break;
+    default:
+        assert(1 == 0);
+        break;
+    }
+
+    return ret;
+}
+
+static inline void neu_value16_set_bit(neu_value16_u *value, uint8_t index,
+                                       uint8_t v)
+{
+    switch (index) {
+    case 0:
+        value->vb.b0 = v;
+        break;
+    case 1:
+        value->vb.b1 = v;
+        break;
+    case 2:
+        value->vb.b2 = v;
+        break;
+    case 3:
+        value->vb.b3 = v;
+        break;
+    case 4:
+        value->vb.b4 = v;
+        break;
+    case 5:
+        value->vb.b5 = v;
+        break;
+    case 6:
+        value->vb.b6 = v;
+        break;
+    case 7:
+        value->vb.b7 = v;
+        break;
+    case 8:
+        value->vb.b8 = v;
+        break;
+    case 9:
+        value->vb.b9 = v;
+        break;
+    case 10:
+        value->vb.b10 = v;
+        break;
+    case 11:
+        value->vb.b11 = v;
+        break;
+    case 12:
+        value->vb.b12 = v;
+        break;
+    case 13:
+        value->vb.b13 = v;
+        break;
+    case 14:
+        value->vb.b14 = v;
+        break;
+    case 15:
+        value->vb.b15 = v;
+        break;
+    default:
+        assert(1 == 0);
+        break;
+    }
+}
+
+static inline uint16_t neu_get_u16(uint8_t *bytes)
+{
+    uint16_t ret = 0;
+    uint8_t *t   = NULL;
+
+    t = (uint8_t *) &ret;
+
+    t[0] = bytes[0];
+    t[1] = bytes[1];
+
+    return ret;
+}
+
+static inline void neu_set_u16(uint8_t *bytes, uint16_t val)
+{
+    uint8_t *t = NULL;
+
+    t = (uint8_t *) &val;
+
+    bytes[0] = t[0];
+    bytes[1] = t[1];
+}
+
+static inline int16_t neu_get_i16(uint8_t *bytes)
+{
+    int16_t  ret = 0;
+    uint8_t *t   = NULL;
+
+    t = (uint8_t *) &ret;
+
+    t[0] = bytes[0];
+    t[1] = bytes[1];
+
+    return ret;
+}
+
+static inline void neu_set_i16(uint8_t *bytes, int16_t val)
+{
+    uint8_t *t = NULL;
+
+    t = (uint8_t *) &val;
+
+    bytes[0] = t[0];
+    bytes[1] = t[1];
+}
+
+static inline uint32_t neu_get_u32(uint8_t *bytes)
+{
+    uint32_t ret = 0;
+    uint8_t *t   = NULL;
+
+    t = (uint8_t *) &ret;
+
+    t[0] = bytes[0];
+    t[1] = bytes[1];
+    t[2] = bytes[2];
+    t[3] = bytes[3];
+
+    return ret;
+}
+
+static inline void neu_set_u32(uint8_t *bytes, uint32_t val)
+{
+    uint8_t *t = NULL;
+
+    t = (uint8_t *) &val;
+
+    bytes[0] = t[0];
+    bytes[1] = t[1];
+    bytes[2] = t[2];
+    bytes[3] = t[3];
+}
+
+static inline int32_t neu_get_i32(uint8_t *bytes)
+{
+    int32_t  ret = 0;
+    uint8_t *t   = NULL;
+
+    t = (uint8_t *) &ret;
+
+    t[0] = bytes[0];
+    t[1] = bytes[1];
+    t[2] = bytes[2];
+    t[3] = bytes[3];
+
+    return ret;
+}
+
+static inline void neu_set_i32(uint8_t *bytes, int32_t val)
+{
+    uint8_t *t = NULL;
+
+    t = (uint8_t *) &val;
+
+    bytes[0] = t[0];
+    bytes[1] = t[1];
+    bytes[2] = t[2];
+    bytes[3] = t[3];
+}
+
+static inline float neu_get_f32(uint8_t *bytes)
+{
+    float    ret = 0;
+    uint8_t *t   = NULL;
+
+    t = (uint8_t *) &ret;
+
+    t[0] = bytes[0];
+    t[1] = bytes[1];
+    t[2] = bytes[2];
+    t[3] = bytes[3];
+
+    return ret;
+}
+
+static inline void neu_set_f32(uint8_t *bytes, float val)
+{
+    uint8_t *t = NULL;
+
+    t = (uint8_t *) &val;
+
+    bytes[0] = t[0];
+    bytes[1] = t[1];
+    bytes[2] = t[2];
+    bytes[3] = t[3];
+}
+
+static inline uint64_t neu_get_u64(uint8_t *bytes)
+{
+    uint64_t ret = 0;
+    uint8_t *t   = NULL;
+
+    t = (uint8_t *) &ret;
+
+    t[0] = bytes[0];
+    t[1] = bytes[1];
+    t[2] = bytes[2];
+    t[3] = bytes[3];
+    t[4] = bytes[4];
+    t[5] = bytes[5];
+    t[6] = bytes[6];
+    t[7] = bytes[7];
+
+    return ret;
+}
+
+static inline void neu_set_u64(uint8_t *bytes, uint64_t val)
+{
+    uint8_t *t = NULL;
+
+    t = (uint8_t *) &val;
+
+    bytes[0] = t[0];
+    bytes[1] = t[1];
+    bytes[2] = t[2];
+    bytes[3] = t[3];
+    bytes[4] = t[4];
+    bytes[5] = t[5];
+    bytes[6] = t[6];
+    bytes[7] = t[7];
+}
+
+static inline int64_t neu_get_i64(uint8_t *bytes)
+{
+    int64_t  ret = 0;
+    uint8_t *t   = NULL;
+
+    t = (uint8_t *) &ret;
+
+    t[0] = bytes[0];
+    t[1] = bytes[1];
+    t[2] = bytes[2];
+    t[3] = bytes[3];
+    t[4] = bytes[4];
+    t[5] = bytes[5];
+    t[6] = bytes[6];
+    t[7] = bytes[7];
+
+    return ret;
+}
+
+static inline void neu_set_i64(uint8_t *bytes, int64_t val)
+{
+    uint8_t *t = NULL;
+
+    t = (uint8_t *) &val;
+
+    bytes[0] = t[0];
+    bytes[1] = t[1];
+    bytes[2] = t[2];
+    bytes[3] = t[3];
+    bytes[4] = t[4];
+    bytes[5] = t[5];
+    bytes[6] = t[6];
+    bytes[7] = t[7];
+}
+
+static inline double neu_get_f64(uint8_t *bytes)
+{
+    double   ret = 0;
+    uint8_t *t   = NULL;
+
+    t = (uint8_t *) &ret;
+
+    t[0] = bytes[0];
+    t[1] = bytes[1];
+    t[2] = bytes[2];
+    t[3] = bytes[3];
+    t[4] = bytes[4];
+    t[5] = bytes[5];
+    t[6] = bytes[6];
+    t[7] = bytes[7];
+
+    return ret;
+}
+
+static inline void neu_set_f64(uint8_t *bytes, double val)
+{
+    uint8_t *t = NULL;
+
+    t = (uint8_t *) &val;
+
+    bytes[0] = t[0];
+    bytes[1] = t[1];
+    bytes[2] = t[2];
+    bytes[3] = t[3];
+    bytes[4] = t[4];
+    bytes[5] = t[5];
+    bytes[6] = t[6];
+    bytes[7] = t[7];
+}
+
+static inline void neu_ntohs24_p(uint8_t *value)
+{
+    uint8_t t = 0;
+
+    t        = value[0];
+    value[0] = value[2];
+    value[2] = t;
+}
+
+static inline void neu_htons24_p(uint8_t *value)
+{
+    neu_ntohs24_p(value);
+}
+
+static inline uint64_t neu_htonll(uint64_t u)
+{
+    uint8_t *bytes     = (uint8_t *) &u;
+    uint64_t ret       = 0;
+    uint8_t *ret_bytes = (uint8_t *) &ret;
+
+    ret_bytes[0] = bytes[7];
+    ret_bytes[1] = bytes[6];
+    ret_bytes[2] = bytes[5];
+    ret_bytes[3] = bytes[4];
+    ret_bytes[4] = bytes[3];
+    ret_bytes[5] = bytes[2];
+    ret_bytes[6] = bytes[1];
+    ret_bytes[7] = bytes[0];
+
+    return ret;
+}
+
+static inline uint64_t neu_htonlb(uint64_t u)
+{
+    uint8_t *in        = (uint8_t *) &u;
+    uint64_t out       = 0;
+    uint8_t *out_bytes = (uint8_t *) &out;
+
+    out_bytes[0] = in[1];
+    out_bytes[1] = in[0];
+    out_bytes[2] = in[3];
+    out_bytes[3] = in[2];
+    out_bytes[4] = in[5];
+    out_bytes[5] = in[4];
+    out_bytes[6] = in[7];
+    out_bytes[7] = in[6];
+
+    return out;
+}
+
+static inline uint64_t neu_htonbl(uint64_t u)
+{
+    uint8_t *in        = (uint8_t *) &u;
+    uint64_t out       = 0;
+    uint8_t *out_bytes = (uint8_t *) &out;
+
+    out_bytes[0] = in[6];
+    out_bytes[1] = in[7];
+    out_bytes[2] = in[4];
+    out_bytes[3] = in[5];
+    out_bytes[4] = in[2];
+    out_bytes[5] = in[3];
+    out_bytes[6] = in[0];
+    out_bytes[7] = in[1];
+
+    return out;
+}
+
+static inline uint64_t neu_ntohll(uint64_t u)
+{
+    return neu_htonll(u);
+}
+
+static inline void neu_ntonll_p(uint64_t *pu)
+{
+    uint64_t ret = neu_htonll(neu_get_u64((uint8_t *) pu));
+    neu_set_u64((uint8_t *) pu, ret);
+}
+
+static inline void neu_htonll_p(uint64_t *pu)
+{
+    neu_ntonll_p(pu);
+}
+
+static inline void neu_ntohl_p(uint32_t *pu)
+{
+    uint32_t ret = ntohl(neu_get_u32((uint8_t *) pu));
+    neu_set_u32((uint8_t *) pu, ret);
+}
+
+static inline void neu_htonl_p(uint32_t *pu)
+{
+    neu_ntohl_p(pu);
+}
+
+static inline void neu_ntohs_p(uint16_t *pu)
+{
+    uint16_t ret = ntohs(neu_get_u16((uint8_t *) pu));
+    neu_set_u16((uint8_t *) pu, ret);
+}
+
+static inline void neu_htons_p(uint16_t *pu)
+{
+    neu_ntohs_p(pu);
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

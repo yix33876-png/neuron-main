@@ -1,0 +1,13 @@
+{
+	"plugins": [
+		"libplugin-mqtt.so",
+		"libplugin-mqtt-auth.so",
+		"libplugin-mqtt-aggregate.so",
+		"libplugin-aws-iot.so",
+		"libplugin-azure-iot.so",
+		"libplugin-ekuiper.so",
+		"libplugin-modbus-tcp.so",
+		"libplugin-modbus-rtu.so",
+		"libplugin-file.so"
+	]
+}
