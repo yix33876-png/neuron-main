@@ -6,7 +6,7 @@ usage() {
   cat <<'EOF'
 Usage: deploy_rk3506_release_bundle.sh [options]
 
-Deploy a prebuilt RK3506 Neuron release bundle to a target board, then start
+Deploy a prebuilt RK3506 gateway release bundle to a target board, then start
 NanoMQ and Neuron.
 
 Options:
@@ -17,18 +17,19 @@ Options:
   --bundle-url <url>      Download release tar.gz before deploy
   --work-dir <path>       Temporary extract dir. Default: /tmp/neuron-rk3506-release-install
   --neuron-dir <path>     Target Neuron dir. Default: /opt/neuron
-  --nanomq-conf <path>    Target NanoMQ conf. Default: /root/nanomq-local.conf
+  --nanomq-bin <path>     Target NanoMQ binary. Default: /usr/local/bin/nanomq
+  --nanomq-conf <path>    Target NanoMQ conf. Default: /etc/nanomq/nanomq.conf
   --skip-start            Deploy only, do not restart services
   -h, --help              Show this help
 
 Examples:
   scripts/deploy_rk3506_release_bundle.sh \
     --host 192.168.9.10 \
-    --bundle-file dist/neuron-rk3506-v1.0.0.tar.gz
+    --bundle-file dist/industrial-iot-rk3506-v1.0.0.tar.gz
 
   bash deploy_rk3506_release_bundle.sh \
     --host 192.168.9.10 \
-    --bundle-url https://github.com/<user>/<repo>/releases/download/v1.0.0/neuron-rk3506-v1.0.0.tar.gz
+    --bundle-url https://github.com/<user>/<repo>/releases/download/v1.0.0/industrial-iot-rk3506-v1.0.0.tar.gz
 EOF
 }
 
@@ -60,7 +61,8 @@ bundle_file=""
 bundle_url=""
 work_dir="/tmp/neuron-rk3506-release-install"
 neuron_dir="/opt/neuron"
-nanomq_conf="/root/nanomq-local.conf"
+nanomq_bin="/usr/local/bin/nanomq"
+nanomq_conf="/etc/nanomq/nanomq.conf"
 skip_start=0
 
 while [[ $# -gt 0 ]]; do
@@ -98,6 +100,11 @@ while [[ $# -gt 0 ]]; do
     --neuron-dir)
       [[ $# -ge 2 ]] || die "missing value for --neuron-dir"
       neuron_dir="$2"
+      shift 2
+      ;;
+    --nanomq-bin)
+      [[ $# -ge 2 ]] || die "missing value for --nanomq-bin"
+      nanomq_bin="$2"
       shift 2
       ;;
     --nanomq-conf)
@@ -150,10 +157,15 @@ bundle_neuron_dir="$work_dir/extract/neuron"
 [[ -d "$bundle_neuron_dir/plugins" ]] || die "invalid bundle: missing plugins"
 [[ -d "$bundle_neuron_dir/lib" ]] || die "invalid bundle: missing lib"
 
+bundle_nanomq_bin="$work_dir/extract/nanomq/bin/nanomq"
+bundle_nanomq_etc="$work_dir/extract/nanomq/etc"
+[[ -f "$bundle_nanomq_bin" ]] || die "invalid bundle: missing nanomq binary"
+[[ -d "$bundle_nanomq_etc" ]] || die "invalid bundle: missing nanomq config directory"
+
 echo "==> Stopping target services"
 remote_run "
-if [ -x /usr/local/bin/nanomq ]; then
-  /usr/local/bin/nanomq stop >/tmp/nanomq-stop.log 2>&1 || true
+if [ -x '$nanomq_bin' ]; then
+  '$nanomq_bin' stop >/tmp/nanomq-stop.log 2>&1 || true
 fi
 pkill neuron >/dev/null 2>&1 || true
 sleep 1
@@ -163,6 +175,12 @@ echo "==> Deploying Neuron bundle to $(ssh_target):$neuron_dir"
 remote_run "mkdir -p '$neuron_dir'"
 remote_copy -r "$bundle_neuron_dir"/. "$(ssh_target):$neuron_dir/"
 
+echo "==> Deploying NanoMQ to $(ssh_target):$nanomq_bin"
+remote_run "mkdir -p '$(dirname "$nanomq_bin")' '$(dirname "$nanomq_conf")'"
+remote_copy "$bundle_nanomq_bin" "$(ssh_target):$nanomq_bin"
+remote_copy -r "$bundle_nanomq_etc"/. "$(ssh_target):$(dirname "$nanomq_conf")/"
+remote_run "chmod +x '$nanomq_bin'"
+
 if [[ "$skip_start" -eq 1 ]]; then
   echo "==> Deploy complete. Service start skipped."
   exit 0
@@ -171,8 +189,8 @@ fi
 echo "==> Starting NanoMQ and Neuron"
 remote_run "
 set -e
-if [ -x /usr/local/bin/nanomq ] && [ -f '$nanomq_conf' ]; then
-  nohup /usr/local/bin/nanomq start --conf '$nanomq_conf' --log_level info --log_stdout false >/tmp/nanomq-stdout.log 2>&1 &
+if [ -x '$nanomq_bin' ] && [ -f '$nanomq_conf' ]; then
+  nohup '$nanomq_bin' start --conf '$nanomq_conf' --log_level info --log_stdout false >/tmp/nanomq-stdout.log 2>&1 &
 else
   echo 'warning: NanoMQ binary or config not found; skip NanoMQ start' >&2
 fi

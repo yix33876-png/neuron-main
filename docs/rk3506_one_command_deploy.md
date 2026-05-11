@@ -199,7 +199,7 @@ netstat -lntp | grep -E ':(7000|1883)'
 
 ## 7. 使用 GitHub Release 分发编译产物
 
-如果不希望客户在自己的 Linux 主机上编译，可以把 RK3506 编译产物打成 Release 资产。
+如果不希望客户在自己的 Linux 主机上编译，可以把 RK3506 编译产物打成 Release 资产。这个 Release 包应同时包含 Neuron 和 NanoMQ，客户拿到裸机 RK3506 后不需要再单独准备 NanoMQ。
 
 ### 7.1 生成 Release tar.gz
 
@@ -215,8 +215,8 @@ scripts/make_rk3506_release_bundle.sh --version v1.0.0
 生成：
 
 ```text
-dist/neuron-rk3506-v1.0.0.tar.gz
-dist/neuron-rk3506-v1.0.0.tar.gz.sha256
+dist/industrial-iot-rk3506-v1.0.0.tar.gz
+dist/industrial-iot-rk3506-v1.0.0.tar.gz.sha256
 ```
 
 这个 tar.gz 里面包含：
@@ -232,10 +232,16 @@ neuron/
   logs/
   dist/
 
+nanomq/
+  bin/nanomq
+  etc/nanomq.conf
+  etc/*.conf
+
 deploy_rk3506_release_bundle.sh
+install_rk3506_release_on_target.sh
 ```
 
-把 `dist/neuron-rk3506-v1.0.0.tar.gz` 和 `.sha256` 上传到 GitHub Release 或阿里云托管平台 Release。
+把 `dist/industrial-iot-rk3506-v1.0.0.tar.gz` 和 `.sha256` 上传到 GitHub Release 或阿里云托管平台 Release。
 
 ### 7.2 客户从 Release 部署到 RK3506
 
@@ -244,7 +250,7 @@ deploy_rk3506_release_bundle.sh
 ```bash
 bash deploy_rk3506_release_bundle.sh \
   --host <RK3506_IP> \
-  --bundle-file neuron-rk3506-v1.0.0.tar.gz
+  --bundle-file industrial-iot-rk3506-v1.0.0.tar.gz
 ```
 
 如果客户直接从 Release URL 下载并部署：
@@ -254,18 +260,93 @@ curl -fsSL '<RAW_DEPLOY_SCRIPT_URL>' -o /tmp/deploy_rk3506_release_bundle.sh
 
 bash /tmp/deploy_rk3506_release_bundle.sh \
   --host <RK3506_IP> \
-  --bundle-url 'https://github.com/<user>/<repo>/releases/download/v1.0.0/neuron-rk3506-v1.0.0.tar.gz'
+  --bundle-url 'https://github.com/<user>/<repo>/releases/download/v1.0.0/industrial-iot-rk3506-v1.0.0.tar.gz'
+```
+
+### 7.3 在 RK3506 本机一条命令安装
+
+如果客户能直接登录 RK3506，并且 RK3506 能访问 GitHub Release，可以不经过 Linux 主机，直接在 RK3506 上执行一条命令。
+
+前提：
+
+```text
+1. RK3506 能访问 GitHub Release URL
+2. RK3506 上有 curl 或 wget
+3. RK3506 上有 tar
+4. 使用 root 用户执行
+```
+
+推荐一条命令：
+
+```bash
+curl -fsSL 'https://raw.githubusercontent.com/<user>/<repo>/main/scripts/install_rk3506_release_on_target.sh' \
+  | sh -s -- \
+      --repo 'https://github.com/<user>/<repo>' \
+      --version v1.0.0
+```
+
+如果板子上没有 `curl`，但有 `wget`：
+
+```bash
+wget -O- 'https://raw.githubusercontent.com/<user>/<repo>/main/scripts/install_rk3506_release_on_target.sh' \
+  | sh -s -- \
+      --repo 'https://github.com/<user>/<repo>' \
+      --version v1.0.0
+```
+
+也可以直接指定 Release tar.gz URL：
+
+```bash
+curl -fsSL 'https://raw.githubusercontent.com/<user>/<repo>/main/scripts/install_rk3506_release_on_target.sh' \
+  | sh -s -- \
+      --url 'https://github.com/<user>/<repo>/releases/download/v1.0.0/industrial-iot-rk3506-v1.0.0.tar.gz'
+```
+
+这个方式会在 RK3506 本机完成：
+
+```text
+1. 下载 Release tar.gz
+2. 解压
+3. 停止旧的 neuron/nanomq
+4. 覆盖安装到 /opt/neuron
+5. 安装 NanoMQ 到 /usr/local/bin/nanomq
+6. 安装 NanoMQ 配置到 /etc/nanomq
+7. 启动 /usr/local/bin/nanomq
+8. 启动 /opt/neuron/neuron
+```
+
+如果不想启动 NanoMQ：
+
+```bash
+curl -fsSL 'https://raw.githubusercontent.com/<user>/<repo>/main/scripts/install_rk3506_release_on_target.sh' \
+  | sh -s -- \
+      --repo 'https://github.com/<user>/<repo>' \
+      --version v1.0.0 \
+      --nanomq-conf /path/to/nonexistent.conf
+```
+
+如果只安装，不启动服务：
+
+```bash
+curl -fsSL 'https://raw.githubusercontent.com/<user>/<repo>/main/scripts/install_rk3506_release_on_target.sh' \
+  | sh -s -- \
+      --repo 'https://github.com/<user>/<repo>' \
+      --version v1.0.0 \
+      --skip-start
 ```
 
 这样客户不需要编译 Neuron，只需要：
 
 ```text
-1. Linux 主机能 SSH 到 RK3506
-2. Linux 主机安装 sshpass、curl、tar
-3. RK3506 上已有 /usr/local/bin/nanomq 和 NanoMQ 配置
+1. RK3506 能访问 Release 下载地址
+2. RK3506 安装了 curl 或 wget
+3. RK3506 上有 tar
+4. 使用 root 用户执行
 ```
 
-### 7.3 创建 GitHub Release 的建议
+使用 RK3506 本机一条命令安装时，不需要 Linux 主机 SSH 到 RK3506，但 RK3506 必须能访问 Release 下载地址。
+
+### 7.4 创建 GitHub Release 的建议
 
 源码仓库里不要提交 `build-armhf/`、`dist/*.tar.gz`、`*.so` 这些编译产物。当前 `.gitignore` 已经忽略了它们。
 
@@ -280,16 +361,16 @@ git push origin v1.0.0
 然后在 GitHub 页面创建 Release，选择 `v1.0.0` tag，上传：
 
 ```text
-dist/neuron-rk3506-v1.0.0.tar.gz
-dist/neuron-rk3506-v1.0.0.tar.gz.sha256
+dist/industrial-iot-rk3506-v1.0.0.tar.gz
+dist/industrial-iot-rk3506-v1.0.0.tar.gz.sha256
 ```
 
 如果安装了 GitHub CLI，也可以：
 
 ```bash
 gh release create v1.0.0 \
-  dist/neuron-rk3506-v1.0.0.tar.gz \
-  dist/neuron-rk3506-v1.0.0.tar.gz.sha256 \
-  --title "RK3506 Neuron v1.0.0" \
-  --notes "Neuron RK3506 build with MQTT Auth and MQTT Aggregate plugins."
+  dist/industrial-iot-rk3506-v1.0.0.tar.gz \
+  dist/industrial-iot-rk3506-v1.0.0.tar.gz.sha256 \
+  --title "RK3506 Industrial AI Gateway v1.0.0" \
+  --notes "RK3506 gateway build with Neuron, NanoMQ, MQTT Auth and MQTT Aggregate plugins."
 ```

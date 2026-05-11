@@ -14,6 +14,7 @@ output.xml
 report.html
 
 *.tar.gz
+*.tar.gz.sha256
 *.deb
 *.rpm
 
