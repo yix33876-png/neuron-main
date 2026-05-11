@@ -57,3 +57,12 @@ neuron-sdk/
 
 include/csptr/
 include/neuron/version.h
+
+# Local deployment/development docs
+docs/mqtt_aggregate_plugin_dev.md
+docs/rk3506_one_command_deploy.md
+
+# Local development/deployment helper scripts
+scripts/build_deploy_start_rk3506.sh
+scripts/bootstrap_rk3506_from_git.sh
+scripts/apply_rk3506_armhf_patch.sh
