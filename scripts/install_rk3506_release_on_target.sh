@@ -234,6 +234,13 @@ if [ -e "$neuron_dir" ]; then
 fi
 mv "$new_dir" "$neuron_dir"
 
+# Neuron reads some migration schema paths after normalizing
+# /opt/neuron/config to opt/neuron/config. When the daemon is started from
+# /opt/neuron, keep that normalized relative path resolvable.
+mkdir -p "$neuron_dir/opt/neuron"
+rm -rf "$neuron_dir/opt/neuron/config"
+ln -s "$neuron_dir/config" "$neuron_dir/opt/neuron/config"
+
 echo "==> Installing NanoMQ to $nanomq_bin"
 mkdir -p "$(dirname "$nanomq_bin")" "$(dirname "$nanomq_conf")"
 cp -a "$bundle_nanomq_bin" "$nanomq_bin"
