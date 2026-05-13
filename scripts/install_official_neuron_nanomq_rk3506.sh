@@ -16,7 +16,7 @@ Default install paths:
 
 Options:
   --neuron-version <ver>   Default: 2.6.0
-  --nanomq-version <ver>   Default: 0.24.13
+  --nanomq-version <ver>   Default: 0.23.8
   --neuron-url <url>       Override official Neuron tar.gz URL
   --nanomq-url <url>       Override official NanoMQ deb URL
   --neuron-dir <path>      Default: /opt/neuron-official
@@ -103,6 +103,61 @@ extract_deb_data() {
   )
 }
 
+prepare_neuron_config_path() {
+  dir="$1"
+  rel_dir="$(printf '%s' "$dir" | sed 's#^/*##')"
+
+  [ -n "$rel_dir" ] || return
+
+  # Neuron 2.6.0 normalizes /opt/.../config to opt/.../config internally.
+  # Keep that normalized path resolvable when the daemon runs from $dir.
+  mkdir -p "$dir/$rel_dir"
+  rm -rf "$dir/$rel_dir/config"
+  ln -s "$dir/config" "$dir/$rel_dir/config"
+}
+
+stop_neuron_dir() {
+  dir="$1"
+  candidates="$(pidof neuron 2>/dev/null || true) $(ps | awk '$NF == "neuron" {print $1}' || true)"
+  pids=""
+
+  for pid in $candidates; do
+    exe="$(readlink "/proc/$pid/exe" 2>/dev/null || true)"
+    case "$exe" in
+      "$dir/neuron"*)
+        pids="$pids $pid"
+        ;;
+    esac
+  done
+
+  if [ -n "$pids" ]; then
+    kill $pids >/dev/null 2>&1 || true
+    sleep 1
+    kill -9 $pids >/dev/null 2>&1 || true
+  fi
+}
+
+stop_nanomq_dir() {
+  dir="$1"
+  candidates="$(pidof nanomq 2>/dev/null || true) $(ps | awk '$NF == "nanomq" {print $1}' || true)"
+  pids=""
+
+  for pid in $candidates; do
+    exe="$(readlink "/proc/$pid/exe" 2>/dev/null || true)"
+    case "$exe" in
+      "$dir/bin/nanomq"*)
+        pids="$pids $pid"
+        ;;
+    esac
+  done
+
+  if [ -n "$pids" ]; then
+    kill $pids >/dev/null 2>&1 || true
+    sleep 1
+    kill -9 $pids >/dev/null 2>&1 || true
+  fi
+}
+
 write_neuron_scripts() {
   dir="$1"
 
@@ -120,15 +175,28 @@ LD_LIBRARY_PATH="\$DIR:\${LD_LIBRARY_PATH:-}" nohup "\$DIR/neuron" \\
   --plugin_dir "\$DIR/plugins" \\
   -d >/tmp/neuron-official-stdout.log 2>&1
 sleep 2
+if ! netstat -lntp 2>/dev/null | grep ':7000'; then
+  echo "error: Neuron did not listen on port 7000" >&2
+  tail -n 80 "\$DIR/logs/neuron.log" >&2 || true
+  exit 1
+fi
 ps | grep '[n]euron' || true
-netstat -lntp 2>/dev/null | grep ':7000' || true
 EOF
 
-  cat > "$dir/stop-neuron.sh" <<EOF
+cat > "$dir/stop-neuron.sh" <<EOF
 #!/bin/sh
 set -eu
 DIR="$dir"
-pids=\$(ps | awk -v dir="\$DIR" '\$0 ~ dir "/neuron" || \$0 ~ "[.]\\/neuron" {print \$1}' || true)
+pids=""
+candidates="\$(pidof neuron 2>/dev/null || true) \$(ps | awk '\$NF == "neuron" {print \$1}' || true)"
+for pid in \$candidates; do
+  exe="\$(readlink "/proc/\$pid/exe" 2>/dev/null || true)"
+  case "\$exe" in
+    "\$DIR/neuron"*)
+      pids="\$pids \$pid"
+      ;;
+  esac
+done
 if [ -n "\$pids" ]; then
   kill \$pids >/dev/null 2>&1 || true
   sleep 1
@@ -155,8 +223,12 @@ nohup "\$DIR/bin/nanomq" start \\
   --log_level info \\
   --log_stdout false >/tmp/nanomq-official-stdout.log 2>&1 &
 sleep 2
+if ! netstat -lntp 2>/dev/null | grep ':1883'; then
+  echo "error: NanoMQ did not listen on port 1883" >&2
+  tail -n 80 /tmp/nanomq-official-stdout.log >&2 || true
+  exit 1
+fi
 ps | grep '[n]anomq' || true
-netstat -lntp 2>/dev/null | grep ':1883' || true
 EOF
 
   cat > "$dir/stop-nanomq.sh" <<EOF
@@ -166,7 +238,16 @@ DIR="$dir"
 if [ -x "\$DIR/bin/nanomq" ]; then
   "\$DIR/bin/nanomq" stop >/tmp/nanomq-official-stop.log 2>&1 || true
 fi
-pids=\$(ps | awk -v dir="\$DIR" '\$0 ~ dir "/bin/nanomq" {print \$1}' || true)
+pids=""
+candidates="\$(pidof nanomq 2>/dev/null || true) \$(ps | awk '\$NF == "nanomq" {print \$1}' || true)"
+for pid in \$candidates; do
+  exe="\$(readlink "/proc/\$pid/exe" 2>/dev/null || true)"
+  case "\$exe" in
+    "\$DIR/bin/nanomq"*)
+      pids="\$pids \$pid"
+      ;;
+  esac
+done
 if [ -n "\$pids" ]; then
   kill \$pids >/dev/null 2>&1 || true
   sleep 1
@@ -178,7 +259,7 @@ EOF
 }
 
 neuron_version="2.6.0"
-nanomq_version="0.24.13"
+nanomq_version="0.23.8"
 neuron_url=""
 nanomq_url=""
 neuron_dir="/opt/neuron-official"
@@ -294,11 +375,22 @@ extract_deb_data "$tmp_dir/nanomq.deb" "$tmp_dir/nanomq-extract" "$tmp_dir"
 [ -f "$tmp_dir/nanomq-extract/usr/local/bin/nanomq" ] || die "invalid NanoMQ package: missing usr/local/bin/nanomq"
 [ -d "$tmp_dir/nanomq-extract/usr/local/etc" ] || die "invalid NanoMQ package: missing usr/local/etc"
 
+echo "==> Stopping existing official services"
+if [ -x "$neuron_dir/stop-neuron.sh" ]; then
+  "$neuron_dir/stop-neuron.sh" || true
+fi
+stop_neuron_dir "$neuron_dir"
+if [ -x "$nanomq_dir/stop-nanomq.sh" ]; then
+  "$nanomq_dir/stop-nanomq.sh" || true
+fi
+stop_nanomq_dir "$nanomq_dir"
+
 echo "==> Installing isolated Neuron"
 rm -rf "$neuron_dir"
 mkdir -p "$(dirname "$neuron_dir")"
 cp -a "$bundle_neuron" "$neuron_dir"
 chmod +x "$neuron_dir/neuron"
+prepare_neuron_config_path "$neuron_dir"
 
 echo "==> Installing isolated NanoMQ"
 rm -rf "$nanomq_dir"
@@ -331,4 +423,3 @@ case "$start_mode" in
     echo "==> Start skipped"
     ;;
 esac
-
